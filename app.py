@@ -7,7 +7,7 @@ import streamlit as st
 from PIL import Image
 
 from detector import OBJECTS, detect
-from voice import speak, available_voices
+from voice import speak
 
 st.set_page_config(page_title="VisionSpeak", page_icon="👁️", layout="wide")
 
@@ -22,9 +22,45 @@ div[data-testid="stMetric"] {background: #1d2b40; padding: 14px; border-radius: 
 </style>
 <div class="hero">
 <h1>👁️ VisionSpeak</h1>
-<p>Smart object detection with voice assistance · 100 everyday object categories</p>
+<p>Smart object detection with automatic voice assistance · 100 everyday object categories</p>
 </div>
 """, unsafe_allow_html=True)
+
+# Urdu names are spoken by a compatible Urdu Windows TTS voice.
+URDU_NAMES = {
+    "person": "شخص", "car": "گاڑی", "bus": "بس", "truck": "ٹرک",
+    "motorcycle": "موٹر سائیکل", "bicycle": "سائیکل", "scooter": "اسکوٹر",
+    "train": "ٹرین", "airplane": "ہوائی جہاز", "boat": "کشتی",
+    "traffic light": "ٹریفک لائٹ", "stop sign": "رکنے کا نشان",
+    "parking meter": "پارکنگ میٹر", "bench": "بینچ", "chair": "کرسی",
+    "sofa": "صوفہ", "table": "میز", "desk": "ڈیسک", "bed": "بستر",
+    "wardrobe": "الماری", "cabinet": "کابینہ", "bookshelf": "کتابوں کی الماری",
+    "door": "دروازہ", "window": "کھڑکی", "refrigerator": "فریج",
+    "microwave": "مائیکرو ویو", "oven": "اوون", "toaster": "ٹوسٹر",
+    "washing machine": "واشنگ مشین", "fan": "پنکھا", "air conditioner": "اے سی",
+    "television": "ٹیلی ویژن", "monitor": "مانیٹر", "laptop": "لیپ ٹاپ",
+    "desktop computer": "ڈیسک ٹاپ کمپیوٹر", "keyboard": "کی بورڈ",
+    "computer mouse": "کمپیوٹر ماؤس", "mobile phone": "موبائل فون",
+    "tablet": "ٹیبلٹ", "remote control": "ریموٹ کنٹرول", "camera": "کیمرہ",
+    "headphones": "ہیڈ فون", "speaker": "اسپیکر", "microphone": "مائیکروفون",
+    "printer": "پرنٹر", "watch": "گھڑی", "clock": "گھڑی", "lamp": "لیمپ",
+    "light bulb": "بلب", "bottle": "بوتل", "cup": "کپ", "mug": "مگ",
+    "glass": "گلاس", "plate": "پلیٹ", "bowl": "پیالہ", "spoon": "چمچ",
+    "fork": "کانٹا", "knife": "چھری", "pot": "دیگچی", "pan": "فرائنگ پین",
+    "water jug": "پانی کا جگ", "food container": "کھانے کا ڈبہ",
+    "backpack": "بیگ", "handbag": "ہینڈ بیگ", "suitcase": "سوٹ کیس",
+    "wallet": "بٹوا", "umbrella": "چھتری", "book": "کتاب",
+    "notebook": "نوٹ بک", "paper": "کاغذ", "pen": "قلم", "pencil": "پنسل",
+    "scissors": "قینچی", "ruler": "فٹہ", "calculator": "کیلکولیٹر",
+    "stapler": "اسٹیپلر", "toothbrush": "دانتوں کا برش", "comb": "کنگھی",
+    "hair dryer": "ہیئر ڈرائر", "soap bottle": "صابن کی بوتل",
+    "shoe": "جوتا", "sandal": "چپل", "shirt": "قمیض", "jacket": "جیکٹ",
+    "trousers": "پتلون", "hat": "ٹوپی", "helmet": "ہیلمٹ",
+    "glasses": "عینک", "ball": "گیند", "football": "فٹ بال",
+    "cat": "بلی", "dog": "کتا", "bird": "پرندہ", "horse": "گھوڑا",
+    "cow": "گائے", "sheep": "بھیڑ", "potted plant": "گملے والا پودا",
+    "flower": "پھول", "banana": "کیلا", "apple": "سیب",
+}
 
 with st.sidebar:
     st.header("⚙️ Detection settings")
@@ -32,7 +68,7 @@ with st.sidebar:
     image_size = st.select_slider("Image size (CPU speed)", options=[320, 416, 512, 640, 768], value=416)
     st.caption("Smaller image sizes are generally faster on CPU.")
     voice_language = st.selectbox("Voice language", ["English", "Urdu"])
-    st.caption("Urdu requires an Urdu TTS voice installed in Windows.")
+    st.caption("Voice is spoken automatically after each detection. Urdu requires a compatible Urdu TTS voice installed in Windows.")
     st.divider()
     st.caption(f"Loaded prompt categories: {len(OBJECTS)}")
 
@@ -58,12 +94,16 @@ def show_result(pil_image):
             use_container_width=True,
             hide_index=True,
         )
-        sentence = "I can see " + ", ".join(
-            f"{count} {name}" for name, count in counts.most_common()
-        )
-        if st.button("🔊 Speak detected objects"):
-            ok, message = speak(sentence, voice_language)
-            (st.success if ok else st.warning)(message)
+        if voice_language == "Urdu":
+            spoken_names = [URDU_NAMES.get(name, name) for name, count in counts.most_common()]
+            speech_text = "، ".join(spoken_names)
+        else:
+            speech_text = "I can see " + ", ".join(
+                f"{count} {name}" for name, count in counts.most_common()
+            )
+        st.info(f"🔊 Speaking detected objects in {voice_language} automatically…")
+        ok, message = speak(speech_text, voice_language)
+        (st.success if ok else st.warning)(message)
     else:
         st.info("No objects detected. Try lowering the confidence setting or using a clearer image.")
 
@@ -87,6 +127,6 @@ with tab_info:
     st.subheader("About VisionSpeak")
     st.write("VisionSpeak uses YOLO-World with 100 everyday object prompts. It runs on CPU and does not require an NVIDIA GPU.")
     st.warning("CPU detection is slower than GPU detection. The first run downloads the model. Open-vocabulary detections are estimates and may miss or confuse similar objects.")
-    st.write("Urdu speech works only when a compatible Urdu voice is installed in Windows.")
+    st.write("Speech starts automatically after detection. Urdu speech requires a compatible Urdu voice installed in Windows.")
     with st.expander("Show all 100 object categories"):
         st.write(", ".join(OBJECTS))
